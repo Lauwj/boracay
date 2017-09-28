@@ -66,15 +66,15 @@ public class ComDatasourceController extends BaseController {
     }
 
     /**
-     * 获取所有源数据源
+     * 获取所有交互建模的源数据源
      * @return
      */
-    @RequestMapping({"/selectAllSrc"})
+    @RequestMapping({"/selectImSourceDs"})
     @ResponseBody
-    public PageListResult selectAll() {
+    public PageListResult selectImSourceDs() {
         List<ComDatasource> list = null;
         try {
-            list = comDatasourceService.selectAllSrc();
+            list = comDatasourceService.selectImSourceDs();
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("系统异常：" + e);

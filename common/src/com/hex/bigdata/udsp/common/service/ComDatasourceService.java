@@ -285,8 +285,8 @@ public class ComDatasourceService extends BaseService {
         return comDatasourceMapper.selectParameterBySourceId(sourceId);
     }
 
-    public List<ComDatasource> selectAllSrc() {
-        return comDatasourceMapper.selectAllSrc();
+    public List<ComDatasource> selectImSourceDs() {
+        return comDatasourceMapper.selectImSourceDs();
     }
 
     public boolean checkSourceType(String sourceId) {

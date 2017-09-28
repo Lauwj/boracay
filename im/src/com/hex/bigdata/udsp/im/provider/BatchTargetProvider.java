@@ -12,7 +12,7 @@ public interface BatchTargetProvider extends TargetProvider, BatchProvider {
      * @param model
      * @throws Exception
      */
-    void inputSQL(String key, Model model) throws Exception;
+    void buildBatch(String key, Model model) throws Exception;
 
     /**
      * 创建目标引擎Schema

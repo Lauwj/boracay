@@ -59,7 +59,7 @@ public class ImMetadataService extends BaseService {
 
     private static List<ComExcelParam> comExcelParams;
 
-    static{
+    static {
         comExcelParams = new ArrayList<>();
         comExcelParams.add(new ComExcelParam(2, 1, "name"));
         comExcelParams.add(new ComExcelParam(2, 3, "describe"));
@@ -73,9 +73,10 @@ public class ImMetadataService extends BaseService {
     public String insert(ImMetadata imMetadata) {
         String pkId = Util.uuid();
         imMetadata.setPkId(pkId);
-        if("1".equals(imMetadata.getType())){
+        String type = imMetadata.getType();
+        if ("1".equals(type)) {
             imMetadata.setStatus("2"); //外表状态为已建
-        }else{
+        } else if ("0".equals(type)) {
             imMetadata.setStatus("1"); //1未建 2已建
         }
         if (imMetadataMapper.insert(imMetadata.getPkId(), imMetadata)) {
@@ -93,7 +94,7 @@ public class ImMetadataService extends BaseService {
         }
         comPropertiesService.insertList(pkId, imMetadataDto.getComPropertiesList());
         List<ImMetadataCol> imMetadataCols = imMetadataDto.getImMetadataColList();
-        for(ImMetadataCol imMetadataCol : imMetadataCols){
+        for (ImMetadataCol imMetadataCol : imMetadataCols) {
             imMetadataCol.setMdId(pkId);
             imMetadataColService.insert(imMetadataCol);
         }
@@ -115,7 +116,7 @@ public class ImMetadataService extends BaseService {
             return false;
         }
         List<ImMetadataCol> imMetadataCols = imMetadataDto.getImMetadataColList();
-        for(ImMetadataCol imMetadataCol : imMetadataCols){
+        for (ImMetadataCol imMetadataCol : imMetadataCols) {
             imMetadataCol.setMdId(pkId);
             imMetadataColService.insert(imMetadataCol);
         }
@@ -152,7 +153,7 @@ public class ImMetadataService extends BaseService {
         return imMetadataMapper.selectByName(name) != null;
     }
 
-    public List<MetadataCol> getCloumnInfo(String dsId, String tbName){
+    public List<MetadataCol> getCloumnInfo(String dsId, String tbName) {
         ComDatasource comDatasource = comDatasourceService.select(dsId);
         List<ComProperties> comProperties = comPropertiesService.selectByFkId(dsId);
         Datasource datasource = new Datasource(comDatasource, comProperties);
@@ -164,7 +165,7 @@ public class ImMetadataService extends BaseService {
         return list;
     }
 
-    public boolean checkSchemaExists(String dsId, String tbName) throws Exception{
+    public boolean checkSchemaExists(String dsId, String tbName) throws Exception {
         ComDatasource comDatasource = comDatasourceService.select(dsId);
         List<ComProperties> comProperties = comPropertiesService.selectByFkId(dsId);
         Datasource datasource = new Datasource(comDatasource, comProperties);
@@ -186,10 +187,10 @@ public class ImMetadataService extends BaseService {
     public boolean dropTable(String pkId) throws Exception {
         ImMetadata imMetadata = this.select(pkId);
         imMetadata.setStatus("1"); //状态为未建
-        return  imProviderService.dropSchema(getMetadata(pkId)) && imMetadataMapper.update(pkId, imMetadata);
+        return imProviderService.dropSchema(getMetadata(pkId)) && imMetadataMapper.update(pkId, imMetadata);
     }
 
-    public Metadata getMetadata(String pkId){
+    public Metadata getMetadata(String pkId) {
         ImMetadata imMetadata = this.select(pkId);
         String dsId = imMetadata.getDsId();
         ComDatasource comDatasource = comDatasourceService.select(dsId);
@@ -212,7 +213,7 @@ public class ImMetadataService extends BaseService {
     }
 
     @Transactional
-    public Map<String,String> uploadExcel(String uploadFilePath) {
+    public Map<String, String> uploadExcel(String uploadFilePath) {
         Map resultMap = new HashMap<String, String>(2);
         File uploadFile = new File(uploadFilePath);
         FileInputStream in = null;
@@ -238,7 +239,7 @@ public class ImMetadataService extends BaseService {
             page.setPageSize(1);
             for (int activeIndex = hfb.getNumberOfSheets(); i < activeIndex; i++) {
                 sheet = hfb.getSheetAt(i);
-                if(sheet.getLastRowNum()<=0){
+                if (sheet.getLastRowNum() <= 0) {
                     break;
                 }
                 ImMetadataDto imMetadataDto = new ImMetadataDto();
@@ -251,7 +252,7 @@ public class ImMetadataService extends BaseService {
                     break;
                 }
                 //更改数据源
-                ComDatasource ds = comDatasourceService.selectByModelAndName("IM",imMetadata.getDsId());
+                ComDatasource ds = comDatasourceService.selectByModelAndName("IM", imMetadata.getDsId());
                 if (ds == null) {
                     resultMap.put("status", "false");
                     resultMap.put("message", "第" + (i + 1) + "个数据源不存在！");
@@ -259,12 +260,13 @@ public class ImMetadataService extends BaseService {
                 }
                 imMetadata.setDsId(ds.getPkId());
                 //更改类型 0 内表 1 外表
-                imMetadata.setType("内表".equals(imMetadata.getType()) ? "0":"1");
+                imMetadata.setType("内表".equals(imMetadata.getType()) ? "0" : "1");
 
                 //设置模型状态 1 未建 2 已建  内表未建 外表已建
-                if("0".equals(imMetadata.getType())){
+                String type = imMetadata.getType();
+                if ("0".equals(type)) {// 内表
                     imMetadata.setStatus("1");
-                }else{
+                } else if ("1".equals(type)) { // 外表
                     imMetadata.setStatus("2");
                 }
                 //设置模型
@@ -280,7 +282,7 @@ public class ImMetadataService extends BaseService {
         } catch (Exception e) {
             e.printStackTrace();
             resultMap.put("status", "false");
-            resultMap.put("message","第"+i+"个报错异常,错误信息：" + e.getMessage());
+            resultMap.put("message", "第" + i + "个报错异常,错误信息：" + e.getMessage());
             throw new RuntimeException(e.getMessage());
         } finally {
             if (in != null) {
@@ -337,11 +339,11 @@ public class ImMetadataService extends BaseService {
             //设置内容
             imMetadata = imMetadataMapper.select(imMetadata.getPkId());
             //设置数据源
-            if(StringUtils.isNotEmpty(imMetadata.getDsId())){
+            if (StringUtils.isNotEmpty(imMetadata.getDsId())) {
                 imMetadata.setDsId(comDatasourceService.select(imMetadata.getDsId()).getName());
             }
             //设置类型
-            imMetadata.setType("0".equals(imMetadata.getType())? "内表" : "外表");
+            imMetadata.setType("0".equals(imMetadata.getType()) ? "内表" : "外表");
 
             for (ComExcelParam comExcelParam : comExcelParams) {
                 try {
@@ -420,11 +422,11 @@ public class ImMetadataService extends BaseService {
 
     public List<ImMetadata> selectTargetMateData(String type) {
         String tgctId;
-        if("1".equals(type)){
+        if ("1".equals(type)) { // 目标批量类型
             tgctId = "IM_DS_TARGET_BATCH_TYPE";
-        }else if("2".equals(type)){
+        } else if ("2".equals(type)) { // 目标实时类型
             tgctId = "IM_DS_TARGET_REALTIME_TYPE";
-        }else{
+        } else {
             return null;
         }
         return imMetadataMapper.selectTargetMateData(tgctId);

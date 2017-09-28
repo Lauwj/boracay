@@ -401,14 +401,19 @@ public class ImMetadataController {
         return filePath;
     }
 
-
+    /**
+     * 获取状态为已建的目标元数据（实时和批量）信息列表
+     *
+     * @param type
+     * @return
+     */
     @RequestMapping("getTargetMateData/{type}")
     @ResponseBody
-    public MessageResult getTargetMateData(@PathVariable String type){
+    public MessageResult getTargetMateData(@PathVariable String type) {
         List<ImMetadata> imMetadatas = null;
-        try{
+        try {
             imMetadatas = imMetadataService.selectTargetMateData(type);
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return new PageListResult(imMetadatas);

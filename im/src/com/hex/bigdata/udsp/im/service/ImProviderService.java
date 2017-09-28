@@ -66,6 +66,7 @@ public class ImProviderService {
      * @throws Exception
      */
     public boolean createEngineSchema(Model model) throws Exception {
+        logger.debug("创建引擎Schema...");
         if (!getBatchSourceProvider(model.getSourceDatasource()).createSourceEngineSchema(model)) return false;
         return getBatchTargetProvider(model.getTargetMetadata().getDatasource()).createTargetEngineSchema(model);
     }
@@ -78,6 +79,7 @@ public class ImProviderService {
      * @throws Exception
      */
     public boolean dropEngineSchema(Model model) throws Exception {
+        logger.debug("删除引擎Schema...");
         if (!getBatchSourceProvider(model.getSourceDatasource()).dropSourceEngineSchema(model)) return false;
         return getBatchTargetProvider(model.getTargetMetadata().getDatasource()).dropTargetEngineSchema(model);
     }
@@ -90,6 +92,7 @@ public class ImProviderService {
      * @throws Exception
      */
     public boolean createSchema(Metadata metadata) throws Exception {
+        logger.debug("创建Schema...");
         return getTargetProvider(metadata.getDatasource()).createSchema(metadata);
     }
 
@@ -101,6 +104,7 @@ public class ImProviderService {
      * @throws Exception
      */
     public boolean dropSchema(Metadata metadata) throws Exception {
+        logger.debug("删除Schema...");
         return getTargetProvider(metadata.getDatasource()).dropSchema(metadata);
     }
 
@@ -110,7 +114,9 @@ public class ImProviderService {
      * @param model
      */
     public void buildRealtime(Model model) throws Exception {
-        getRealtimeTargetProvider(model.getTargetMetadata().getDatasource()).inputData(model);
+        logger.debug("构建实时任务【开始】");
+        getRealtimeTargetProvider(model.getTargetMetadata().getDatasource()).buildRealtime(model);
+        logger.debug("构建实时任务【结束】");
     }
 
     /**
@@ -119,7 +125,9 @@ public class ImProviderService {
      * @param model
      */
     public void buildBatch(String key, Model model) throws Exception {
-        getBatchTargetProvider(model.getTargetMetadata().getDatasource()).inputSQL(key, model);
+        logger.debug("构建批量任务【开始】");
+        getBatchTargetProvider(model.getTargetMetadata().getDatasource()).buildBatch(key, model);
+        logger.debug("构建批量任务【结束】");
     }
 
     /**
@@ -129,6 +137,7 @@ public class ImProviderService {
      * @return
      */
     public boolean testDatasource(Datasource datasource) {
+        logger.debug("测试数据源...");
         return getProvider(datasource).testDatasource(datasource);
     }
 

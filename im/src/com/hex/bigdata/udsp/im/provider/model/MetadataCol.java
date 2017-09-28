@@ -25,6 +25,8 @@ public class MetadataCol {
 
     private boolean stored; // 存储
 
+    private String value;
+
     public Short getSeq() {
         if (seq == null)
             throw new IllegalArgumentException("seq不能为空");
@@ -101,5 +103,13 @@ public class MetadataCol {
 
     public void setStored(boolean stored) {
         this.stored = stored;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 }

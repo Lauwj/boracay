@@ -72,6 +72,7 @@ public class BatchJobService {
      * 准备构建
      */
     public void readyBuild(String id, Model model) {
+        logger.debug("添加批量作业的信息【准备构建】");
         try {
             BatchInfo batchInfo = new BatchInfo();
             batchInfo.setId(id);
@@ -92,6 +93,7 @@ public class BatchJobService {
      * 开始构建
      */
     public void building(String id, int percent) {
+        logger.debug("更新批量作业的信息【开始构建】");
         try {
             BatchInfo batchInfo = select(id);
             batchInfo.setStatus(BatchStatus.BUILDING);
@@ -109,6 +111,7 @@ public class BatchJobService {
      * @param id
      */
     public void buildSuccess(String id) {
+        logger.debug("更新批量作业的信息【构建成功】");
         try {
             BatchInfo batchInfo = select(id);
             batchInfo.setStatus(BatchStatus.BUILD_SUCCESS);
@@ -128,6 +131,7 @@ public class BatchJobService {
      * @param id
      */
     public void buildFail(String id, String message) {
+        logger.debug("更新批量作业的信息【构建失败】");
         try {
             BatchInfo batchInfo = select(id);
             batchInfo.setStatus(BatchStatus.BUILD_FAIL);

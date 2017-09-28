@@ -69,9 +69,9 @@ public class ComDatasourceMapper extends SyncMapper<ComDatasource> {
                 "com.hex.bigdata.udsp.common.dao.ComDatasourceMapper.selectParameterBySourceId", sourceId);
     }
 
-    public List<ComDatasource> selectAllSrc() {
+    public List<ComDatasource> selectImSourceDs() {
         return sqlSessionTemplate.selectList(
-                "com.hex.bigdata.udsp.common.dao.ComDatasourceMapper.selectAllSrc");
+                "com.hex.bigdata.udsp.common.dao.ComDatasourceMapper.selectImSourceDs");
     }
 
     public boolean checkSourceType(String sourceId) {

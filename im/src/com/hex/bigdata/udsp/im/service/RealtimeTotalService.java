@@ -27,6 +27,7 @@ public class RealtimeTotalService {
     private RealtimeTotalMapper realtimeTotalMapper;
 
     public void readyStart(String id, MqModel model) throws Exception {
+        logger.debug("添加实时作业的集群信息【准备启动】");
         try {
             RealtimeTotalInfo realtimeInfo = new RealtimeTotalInfo();
             realtimeInfo.setId(id);
@@ -43,6 +44,7 @@ public class RealtimeTotalService {
     }
 
     public void starting(String id) {
+        logger.debug("更新实时作业的集群信息【开始启动】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STARTING);
@@ -55,6 +57,7 @@ public class RealtimeTotalService {
 
 
     public void running(String id) {
+        logger.debug("更新实时作业的集群信息【正在运行】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.RUNNING);
@@ -68,6 +71,7 @@ public class RealtimeTotalService {
     }
 
     public void startFail(String id) {
+        logger.debug("更新实时作业的集群信息【启动失败】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.START_FAIL);
@@ -79,6 +83,7 @@ public class RealtimeTotalService {
     }
 
     public void readyStop(String id) throws Exception {
+        logger.debug("更新实时作业的集群信息【准备停止】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStopHost(HOST_KEY);
@@ -93,6 +98,7 @@ public class RealtimeTotalService {
     }
 
     public void stoping(String id) {
+        logger.debug("更新实时作业的集群信息【开始停止】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOPING);
@@ -104,6 +110,7 @@ public class RealtimeTotalService {
     }
 
     public void stopSuccess(String id) {
+        logger.debug("更新实时作业的集群信息【停止成功】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOP_SUCCESS);
@@ -117,6 +124,7 @@ public class RealtimeTotalService {
     }
 
     public void stopFail(String id) {
+        logger.debug("更新实时作业的集群信息【停止失败】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOP_FAIL);
@@ -128,6 +136,7 @@ public class RealtimeTotalService {
     }
 
     public void runFail(String id) {
+        logger.debug("更新实时作业的集群信息【运行失败】");
         try {
             RealtimeTotalInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.RUN_FAIL);

@@ -26,7 +26,7 @@ public class HiveModel extends JdbcModel {
         super(model);
     }
 
-    public HiveModel(List<Property> properties, Datasource srcDatasource){
-        super(properties,srcDatasource);
+    public HiveModel(List<Property> properties, Datasource srcDatasource) {
+        super(properties, srcDatasource);
     }
 }

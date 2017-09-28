@@ -26,29 +26,8 @@ public class OracleModel extends JdbcModel {
         super(model);
     }
 
-    public OracleModel(List<Property> properties, Datasource srcDatasource){
-        super(properties,srcDatasource);
-    }
-
-    public String getDatabaseName() {
-        String value = getProperty("oracle.database.name").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.database.name不能为空");
-        return value;
-    }
-
-    public String getTableName() {
-        String value = getProperty("oracle.table.name").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.table.name不能为空");
-        return value;
-    }
-
-    public String getSql() {
-        String value = getProperty("oracle.sql").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.sql不能为空");
-        return value;
+    public OracleModel(List<Property> properties, Datasource srcDatasource) {
+        super(properties, srcDatasource);
     }
 
 }

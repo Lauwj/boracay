@@ -1,40 +1,65 @@
 package com.hex.bigdata.udsp.im.provider.impl.wrapper;
 
-import com.hex.bigdata.udsp.common.constant.DataType;
+import com.hex.bigdata.udsp.im.provider.RealtimeSourceProvider;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.ValueColumn;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.WhereProperty;
+import com.hex.bigdata.udsp.im.provider.model.Metadata;
+import com.hex.bigdata.udsp.im.provider.model.ModelMapping;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.sql.Timestamp;
+import java.util.List;
 
 /**
  * Created by JunjieM on 2017-9-7.
  */
-public abstract class KafkaWrapper extends Wrapper {
+public abstract class KafkaWrapper extends Wrapper implements RealtimeSourceProvider {
     private static Logger logger = LogManager.getLogger(KafkaWrapper.class);
 
-    protected DataType getType(Object value) {
-        DataType type = DataType.STRING;
-        if (value instanceof Integer) {
-            type = DataType.INT;
-        } else if (value instanceof BigDecimal) {
-            type = DataType.DECIMAL;
-        } else if (value instanceof Long) {
-            type = DataType.BIGINT;
-        } else if (value instanceof BigInteger) {
-            type = DataType.BIGINT;
-        } else if (value instanceof Double) {
-            type = DataType.DOUBLE;
-        } else if (value instanceof Float) {
-            type = DataType.FLOAT;
-        } else if (value instanceof Short) {
-            type = DataType.SMALLINT;
-        } else if (value instanceof Boolean) {
-            type = DataType.BOOLEAN;
-        } else if (value instanceof Timestamp) {
-            type = DataType.TIMESTAMP;
+    @Override
+    protected void insertInto(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return type;
+    }
+
+    @Override
+    protected void updateInsert(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void matchingUpdate(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected List<String> getSelectColumns(List<ModelMapping> modelMappings, Metadata metadata) {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    @Override
+    protected List<String> getInsertColumns(List<ModelMapping> modelMappings, Metadata metadata) {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

@@ -26,6 +26,7 @@ public class RealtimeNodeService {
     private RealtimeNodeMapper realtimeNodeMapper;
 
     public void starting(String id) {
+        logger.debug("添加实时作业的节点信息【开始启动】");
         try {
             RealtimeNodeInfo realtimeInfo = new RealtimeNodeInfo();
             realtimeInfo.setId(id);
@@ -39,6 +40,7 @@ public class RealtimeNodeService {
     }
 
     public void running(String id) {
+        logger.debug("更新实时作业的节点信息【正在运行】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.RUNNING);
@@ -52,6 +54,7 @@ public class RealtimeNodeService {
     }
 
     public void startFail(String id, String message) {
+        logger.debug("更新实时作业的节点信息【启动失败】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.START_FAIL);
@@ -64,6 +67,7 @@ public class RealtimeNodeService {
     }
 
     public void stoping(String id) {
+        logger.debug("更新实时作业的节点信息【开始停止】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOPING);
@@ -75,6 +79,7 @@ public class RealtimeNodeService {
     }
 
     public void stopSuccess(String id) {
+        logger.debug("更新实时作业的节点信息【停止成功】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOP_SUCCESS);
@@ -88,6 +93,7 @@ public class RealtimeNodeService {
     }
 
     public void stopFail(String id, String message) {
+        logger.debug("更新实时作业的节点信息【停止失败】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.STOP_FAIL);
@@ -100,6 +106,7 @@ public class RealtimeNodeService {
     }
 
     public void runFail(String id, String message) {
+        logger.debug("更新实时作业的节点信息【运行失败】");
         try {
             RealtimeNodeInfo realtimeInfo = select(id);
             realtimeInfo.setStatus(RealtimeStatus.RUN_FAIL);

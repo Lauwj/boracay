@@ -1,32 +1,15 @@
 package com.hex.bigdata.udsp.im.provider.impl;
 
 import com.hex.bigdata.udsp.common.provider.model.Datasource;
-import com.hex.bigdata.udsp.im.constant.DatasourceType;
-import com.hex.bigdata.udsp.im.constant.UpdateMode;
-import com.hex.bigdata.udsp.im.provider.impl.model.datasource.HBaseDatasource;
-import com.hex.bigdata.udsp.im.provider.impl.model.datasource.SolrDatasource;
-import com.hex.bigdata.udsp.im.provider.impl.model.datasource.SolrHBaseDatasource;
-import com.hex.bigdata.udsp.im.provider.impl.model.modeling.KafkaModel;
-import com.hex.bigdata.udsp.im.provider.impl.util.KafkaUtil;
 import com.hex.bigdata.udsp.im.provider.impl.wrapper.SolrHBaseWrapper;
 import com.hex.bigdata.udsp.im.provider.model.Metadata;
 import com.hex.bigdata.udsp.im.provider.model.MetadataCol;
 import com.hex.bigdata.udsp.im.provider.model.Model;
-import kafka.consumer.ConsumerIterator;
-import kafka.consumer.KafkaStream;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.TableName;
-import org.apache.hadoop.hbase.client.HConnection;
-import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -76,7 +59,7 @@ public class SolrHBaseProvider extends SolrHBaseWrapper {
     }
 
     @Override
-    public boolean dropTargetEngineSchema(Model model) throws Exception {
+    public boolean dropTargetEngineSchema(Model model) throws SQLException {
         String id = model.getId();
         Model solrModel = new Model(model);
         solrModel.setId("SOLR" + HIVE_ENGINE_TABLE_SEP + id);
@@ -86,40 +69,19 @@ public class SolrHBaseProvider extends SolrHBaseWrapper {
     }
 
     @Override
-    public void inputData(Model model) {
-        String sDsType = model.getSourceDatasource().getType();
-        UpdateMode updateMode = model.getUpdateMode();
-        // 源是Kafka
-        if (DatasourceType.KAFKA.getValue().equals(sDsType)) {
-            KafkaModel kafkaModel = new KafkaModel(model);
-            List<KafkaStream<byte[], byte[]>> streams = KafkaUtil.outputData(kafkaModel);
-            for (KafkaStream<byte[], byte[]> stream : streams) {
-                ConsumerIterator<byte[], byte[]> iterator = stream.iterator();
-                while (iterator.hasNext()) {
-                    String message = new String(iterator.next().message());
-                    logger.debug("kafka接收的信息为：" + message);
-                    // TODO ... 实时数据处理
-                    if (UpdateMode.MATCHING_UPDATE == updateMode) { // 匹配更新
-
-                    } else if (UpdateMode.UPDATE_INSERT == updateMode) { // 更新插入
-
-                    } else { // 增量插入
-
-                    }
-                }
-            }
-        }
+    public void buildRealtime(Model model) {
+        // TODO ...
     }
 
     @Override
-    public void inputSQL(String key, Model model) throws SQLException {
+    public void buildBatch(String key, Model model) throws SQLException {
         String id = model.getId();
         Model hBaseModel = new Model(model);
         hBaseModel.setId("HBASE" + HIVE_ENGINE_TABLE_SEP + id);
         Model solrModel = new Model(model);
         solrModel.setId("SOLR" + HIVE_ENGINE_TABLE_SEP + id);
-        hbaseProvider.inputSQL("HBASE" + HIVE_ENGINE_TABLE_SEP + key, hBaseModel);
-        solrProvider.inputSQL("SOLR" + HIVE_ENGINE_TABLE_SEP + key, solrModel);
+        hbaseProvider.buildBatch("HBASE" + HIVE_ENGINE_TABLE_SEP + key, hBaseModel);
+        solrProvider.buildBatch("SOLR" + HIVE_ENGINE_TABLE_SEP + key, solrModel);
     }
 
     @Override

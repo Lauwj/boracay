@@ -108,6 +108,7 @@
     LEFT JOIN T_GF_DICT TGD
     on TGD.DICT_ID = CD.TYPE
     where IM.DEL_FLG = '0'
+    and IM.STATUS = '2'
     and TGD.DICT_TYPE_ID = #{tgctId}
   </select>
 </mapper>

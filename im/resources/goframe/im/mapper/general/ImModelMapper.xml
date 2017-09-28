@@ -21,8 +21,8 @@
   </resultMap>
 
   <resultMap id="ImModelView" type="com.hex.bigdata.udsp.im.dto.ImModelView" extends="BaseResultMap">
-    <result column="TDSNAME" property="tDsName" jdbcType="VARCHAR" />
-    <result column="SDSNAME" property="sDsName" jdbcType="VARCHAR" />
+    <result column="T_MD_NAME" property="tMdName" jdbcType="VARCHAR" />
+    <result column="S_DS_NAME" property="sDsName" jdbcType="VARCHAR" />
   </resultMap>
 
   <delete id="deleteByPrimaryKey" parameterType="java.lang.String" >
@@ -73,7 +73,7 @@
 
   <select id="selectPage" resultMap="ImModelView" parameterType="com.hex.bigdata.udsp.im.dto.ImModelView">
     select IM.PK_ID, IM.NAME, IM.DESCRIBE, IM.S_DS_ID, IM.T_MD_ID, IM.NOTE, IM.DEL_FLG, IM.CRT_USER,
-    IM.CRT_TIME, IM.UPT_USER, IM.UPT_TIME, IM.TYPE, IM.BUILD_MODE, IM.UPDATE_MODE,IM.E_DS_ID,IM.STATUS,CD.NAME SDSNAME,IMM.NAME  TDSNAME
+    IM.CRT_TIME, IM.UPT_USER, IM.UPT_TIME, IM.TYPE, IM.BUILD_MODE, IM.UPDATE_MODE,IM.E_DS_ID,IM.STATUS,CD.NAME S_DS_NAME,IMM.NAME  T_MD_NAME
     from IM_MODEL IM
     left join COM_DATASOURCE CD
     on CD.PK_ID = IM.S_DS_ID

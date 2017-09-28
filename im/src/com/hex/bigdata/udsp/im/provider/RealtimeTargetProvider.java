@@ -13,6 +13,6 @@ public interface RealtimeTargetProvider extends TargetProvider, RealtimeProvider
      * @param model
      * @throws Exception
      */
-    void inputData(Model model) throws Exception;
+    void buildRealtime(Model model) throws Exception;
 
 }

@@ -1,13 +1,24 @@
 package com.hex.bigdata.udsp.im.provider.impl.util;
 
 import com.hex.bigdata.udsp.common.constant.DataType;
+import com.hex.bigdata.udsp.common.constant.Operator;
 import com.hex.bigdata.udsp.common.provider.model.Datasource;
 import com.hex.bigdata.udsp.im.provider.impl.model.datasource.SolrDatasource;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.Page;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.WhereProperty;
 import com.hex.bigdata.udsp.im.provider.model.Metadata;
 import com.hex.bigdata.udsp.im.provider.model.MetadataCol;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrServer;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.LBHttpSolrServer;
+import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.common.SolrDocument;
+import org.apache.solr.common.SolrDocumentList;
+import org.apache.solr.common.SolrInputDocument;
 import org.apache.zookeeper.*;
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
@@ -15,8 +26,12 @@ import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
 import java.io.*;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -356,16 +371,10 @@ public class SolrUtil {
     public static void checkSolrProperty(Metadata metadata) throws Exception {
         //检查主键是否合法
         List<MetadataCol> cols = metadata.getMetadataCols();
-        boolean existPk = false;
-        for (MetadataCol e : cols) {
-            if (e.isPrimary()) {
-                existPk = true;
-                break;
-            }
-        }
-        if (!existPk) {
-            throw new Exception("必须指定至少一个主键！");
-        }
+        int count = 0;
+        for (MetadataCol col : cols)
+            if (col.isPrimary()) count++;
+        if (count != 1) throw new Exception("必须指定一个主键！");
 
 //        //检查分片是否合法（使用代理地址时会有问题）
 //        SolrMetadata solrMetadata = new SolrMetadata(metadata.getPropertyMap());
@@ -378,5 +387,402 @@ public class SolrUtil {
 //            throw new Exception("【配置参数】中的参数必须需满足”分片数*副本数<=节点数*单节点最大分片数“，请修改后再提交！");
 //        }
 
+    }
+
+    public static SolrServer getSolrServer(SolrDatasource datasource, String collectionName) {
+        if (StringUtils.isBlank(collectionName)) {
+            throw new IllegalArgumentException("collection name不能为空");
+        }
+        String[] tempServers = datasource.getSolrServers().split(",");
+        String[] servers = new String[tempServers.length];
+        for (int i = 0; i < tempServers.length; i++) {
+            servers[i] = "http://" + tempServers[i] + "/solr/" + collectionName;
+        }
+        SolrServer solrServer = null;
+        try {
+            solrServer = new LBHttpSolrServer(servers);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        return solrServer;
+    }
+
+    /**
+     * 添加单条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param map
+     */
+    public static void addDocument(SolrDatasource datasource, String collectionName, Map<String, String> map) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        SolrInputDocument doc = new SolrInputDocument();
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            doc.addField(entry.getKey(), entry.getValue());
+        }
+        addDocument(solrServer, doc);
+    }
+
+    /**
+     * 添加单条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param idName
+     * @param idValue
+     * @param map
+     */
+    public static void addDocument(SolrDatasource datasource, String collectionName, String idName, String idValue, Map<String, String> map) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        SolrInputDocument doc = new SolrInputDocument();
+        doc.addField(idName, idValue);
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            doc.addField(entry.getKey(), entry.getValue());
+        }
+        addDocument(solrServer, doc);
+    }
+
+    /**
+     * 添加多条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param idName
+     * @param idValues
+     * @param map
+     */
+    public static void addDocument(SolrDatasource datasource, String collectionName, String idName, List<String> idValues, Map<String, String> map) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        List<SolrInputDocument> docs = new ArrayList<>();
+        SolrInputDocument doc = null;
+        for (String idValue : idValues) {
+            doc = new SolrInputDocument();
+            doc.addField(idName, idValue);
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+                doc.addField(entry.getKey(), entry.getValue());
+            }
+            docs.add(doc);
+        }
+        addDocument(solrServer, docs);
+    }
+
+    /**
+     * 添加多条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param maps
+     */
+    public static void addDocument(SolrDatasource datasource, String collectionName, List<Map<String, String>> maps) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        List<SolrInputDocument> docs = new ArrayList<>();
+        SolrInputDocument doc = null;
+        for (Map<String, String> map : maps) {
+            doc = new SolrInputDocument();
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+                doc.addField(entry.getKey(), entry.getValue());
+            }
+            docs.add(doc);
+        }
+        addDocument(solrServer, docs);
+    }
+
+    /**
+     * 添加单个对象
+     *
+     * @param datasource
+     * @param collectionName
+     * @param bean
+     * @param <T>
+     */
+    public static <T> void addDocumentBean(SolrDatasource datasource, String collectionName, T bean) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        try {
+            solrServer.addBean(bean);
+            solrServer.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    /**
+     * 添加多个对象
+     *
+     * @param datasource
+     * @param collectionName
+     * @param beans
+     * @param <T>
+     */
+    public static <T> void addDocumentBean(SolrDatasource datasource, String collectionName, List<T> beans) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        try {
+            solrServer.addBeans(beans);
+            solrServer.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    /**
+     * 更新单条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param idName
+     * @param idValue
+     * @param map
+     */
+    public static void updateDocument(SolrDatasource datasource, String collectionName, String idName, String idValue, Map<String, String> map) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        SolrInputDocument doc = new SolrInputDocument();
+        doc.addField(idName, idValue);
+        Map<String, String> obj = null;
+        for (Map.Entry<String, String> entry : map.entrySet()) {
+            obj = new HashMap<>();
+            obj.put("set", entry.getValue());
+            doc.addField(entry.getKey(), obj);
+        }
+        addDocument(solrServer, doc);
+    }
+
+    /**
+     * 添加单个文档
+     *
+     * @param solrServer
+     * @param doc
+     */
+    public static void addDocument(SolrServer solrServer, SolrInputDocument doc) {
+        try {
+            solrServer.add(doc);
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    /**
+     * 更新多条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param idName
+     * @param idValues
+     * @param map
+     */
+    public static void updateDocument(SolrDatasource datasource, String collectionName, String idName, List<String> idValues, Map<String, String> map) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        List<SolrInputDocument> docs = new ArrayList<>();
+        SolrInputDocument doc = null;
+        Map<String, String> obj = null;
+        for (String idValue : idValues) {
+            doc = new SolrInputDocument();
+            doc.addField(idName, idValue);
+            for (Map.Entry<String, String> entry : map.entrySet()) {
+                obj = new HashMap<>();
+                obj.put("set", entry.getValue());
+                doc.addField(entry.getKey(), obj);
+            }
+            docs.add(doc);
+        }
+        addDocument(solrServer, docs);
+    }
+
+    /**
+     * 添加多个文档
+     *
+     * @param solrServer
+     * @param docs
+     */
+    public static void addDocument(SolrServer solrServer, List<SolrInputDocument> docs) {
+        try {
+            solrServer.add(docs);
+            solrServer.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    /**
+     * 删除单条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param ids
+     */
+    public static void deleteDocument(SolrDatasource datasource, String collectionName, List<String> ids) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        try {
+            solrServer.deleteById(ids);
+            solrServer.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    /**
+     * 删除多条数据
+     *
+     * @param datasource
+     * @param collectionName
+     * @param id
+     */
+    public static void deleteDocument(SolrDatasource datasource, String collectionName, String id) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        try {
+            solrServer.deleteById(id);
+            solrServer.commit();
+        } catch (SolrServerException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (solrServer != null) {
+                solrServer.shutdown();
+            }
+        }
+    }
+
+    public static String getQuery(List<WhereProperty> whereProperties) {
+        StringBuffer queryConditons = new StringBuffer("*:*");
+        String name = null;
+        String value = null;
+        Operator operator = null;
+        for (WhereProperty property : whereProperties) {
+            name = property.getName();
+            value = property.getValue();
+            operator = property.getOperator();
+            if (StringUtils.isBlank(name) || StringUtils.isBlank(value) || operator == null)
+                continue;
+            queryConditons.append(" AND " + name + getCondition(value, operator));
+        }
+        return queryConditons.toString();
+    }
+
+    /**
+     * 分页查询
+     *
+     * @param datasource
+     * @param collectionName
+     * @param whereProperties
+     * @param pageIndex
+     * @param pageSize
+     * @return
+     */
+    public static Page searchPage(SolrDatasource datasource, String collectionName, List<WhereProperty> whereProperties, int pageIndex, int pageSize) {
+        SolrQuery query = new SolrQuery();
+        query.setQuery(getQuery(whereProperties));
+        query.setStart((pageIndex - 1) * pageSize);
+        query.setRows(pageSize);
+        QueryResponse rsp = getQueryResponse(datasource, collectionName, query);
+        if (rsp == null) {
+            return new Page(pageIndex, pageSize, 0, null);
+        } else {
+            SolrDocumentList sdl = rsp.getResults();
+            int totalCount = (int) sdl.getNumFound();
+            List<Map<String, String>> list = getSolrReturnList(rsp);
+            return new Page(pageIndex, pageSize, totalCount, list);
+        }
+    }
+
+    /**
+     * 查询
+     *
+     * @param datasource
+     * @param collectionName
+     * @param whereProperties
+     * @return
+     */
+    public static List<Map<String, String>> search(SolrDatasource datasource, String collectionName, List<WhereProperty> whereProperties) {
+        SolrQuery query = new SolrQuery();
+        query.setQuery(getQuery(whereProperties));
+        QueryResponse rsp = getQueryResponse(datasource, collectionName, query);
+        return getSolrReturnList(rsp);
+    }
+
+    public static QueryResponse getQueryResponse(SolrDatasource datasource, String collectionName, SolrQuery query) {
+        SolrServer solrServer = getSolrServer(datasource, collectionName);
+        if (solrServer == null) {
+            return null;
+        }
+        QueryResponse res = null;
+        try {
+            res = solrServer.query(query);
+        } catch (SolrServerException e) {
+            System.out.println(e.getMessage());
+            res = null;
+        }
+        return res;
+    }
+
+    public static List<Map<String, String>> getSolrReturnList(QueryResponse rsp) {
+        List<Map<String, String>> list = null;
+        if (rsp == null) {
+            return null;
+        } else {
+            Map<String, String> map = null;
+            SolrDocumentList docs = rsp.getResults();
+            for (int i = 0; i < docs.size(); i++) {
+                SolrDocument doc = docs.get(i);
+                map = new HashMap<>();
+                for (Map.Entry<String, Object> entry : doc.entrySet()) {
+                    map.put(entry.getKey(), (String) entry.getValue());
+                }
+                list.add(map);
+            }
+        }
+        return list;
+    }
+
+    public static String getCondition(String value, Operator operator) {
+        String str = "";
+        if (Operator.EQ == operator) {
+            str = ":" + value;
+        } else if (Operator.NE == operator) {
+            str = ":-" + value;
+        } else if (Operator.GE == operator) {
+            str = ":[" + value + " TO *]";
+        } else if (Operator.GT == operator) {
+            str = ":{" + value + " TO *]";
+        } else if (Operator.LE == operator) {
+            str = ":[* TO " + value + "]";
+        } else if (Operator.LT == operator) {
+            str = ":[* TO " + value + "}";
+        } else if (Operator.IN == operator) {
+            str = ":(" + value + ")";
+        } else if (Operator.LK == operator) {
+            str = ":*" + value + "*";
+        } else if (Operator.RLIKE == operator) {
+            str = ":" + value + "*";
+        }
+        return str;
     }
 }

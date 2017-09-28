@@ -16,7 +16,7 @@ public class ImModelView extends ImModel implements Serializable{
 
     private String uptTimeEnd;
 
-    private String tDsName;
+    private String tMdName;
 
     private String sDsName;
 
@@ -54,12 +54,12 @@ public class ImModelView extends ImModel implements Serializable{
         this.uptTimeEnd = uptTimeEnd;
     }
 
-    public String gettDsName() {
-        return tDsName;
+    public String gettMdName() {
+        return tMdName;
     }
 
-    public void settDsName(String tDsName) {
-        this.tDsName = tDsName;
+    public void settMdName(String tMdName) {
+        this.tMdName = tMdName;
     }
 
     public String getsDsName() {

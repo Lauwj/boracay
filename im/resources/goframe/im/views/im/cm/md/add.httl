@@ -22,16 +22,14 @@ ${extends("/goframe/function_layout.httl")}
                     <td>
 
                         <div id="dsId" class="nui-combobox" style="width:97%;" popupWidth="400" textField="name"
-                             valueField="pkId" onvaluechanged="typeChanged"
-                             url="${basePath}/com/ds/select?model=${model}&imDsTypeDictId=IM_DS_TARGET_TYPE"
+                             valueField="pkId" onvaluechanged="typeChanged" allowInput="true"
+                             url="${basePath}/com/ds/select?model=IM&imDsTypeDictId=IM_DS_TARGET_TYPE"
                              dataField="data" name="dsId" multiSelect="false" required="true">
                             <div property="columns">
                                 <div header="名称" field="name"></div>
                                 <div header="说明" field="describe"></div>
                             </div>
                         </div>
-                        <!--<input id="dsId" name="dsId" class="nui-combobox" valueField="pkId" textField="name" allowInput="true"
-                               dataField="data" url="${basePath}/com/ds/select?model=${model}" style="width:97%" required="true"/>-->
                     </td>
                     <th class="nui-form-label"></th>
                     <td>
@@ -330,25 +328,19 @@ ${extends("/goframe/function_layout.httl")}
         }
     }
 
-    /**
-     * 保存
-     */
-    function save() {
-        form1.validate();
-        if (form1.isValid() == false) {
+    //保存
+    function save(){
+        var date = getSaveData();
+        if (!date) {
             return;
         }
-        var saveData = getSaveData();
-        if (!saveData) {
-            return;
-        }
-        var json = nui.encode(saveData);
-        //禁用保存按钮
-        nui.get("saveButton").disable();
+        var json = nui.encode(date);
         // --发送信息--
         form1.loading("正在保存中,请稍等...");
+        //禁用保存按钮
+        nui.get("saveButton").disable();
         $.ajax({
-            url: "${basePath}/im/md/insert",
+            url: "${basePath}/im/model/insert",
             type: 'POST',
             data: json,
             cache: false,
@@ -356,16 +348,11 @@ ${extends("/goframe/function_layout.httl")}
             success: function (result) {
                 if (result.status == true) {
                     nui.alert(result.message);
-                    var fromModel = "${fromModel}";
-                    if (fromModel == "true") {
-                        CloseWindow(result.data);
-                    } else {
-                        CloseWindow("success");
-                    }
+                    CloseWindow("success");
                 } else {
                     nui.alert(result.message, "系统提示", function (action) {
                         if (action == "ok" || action == "close") {
-//                            CloseWindow("failed");
+                            CloseWindow("failed");
                         }
                     });
                 }
@@ -374,6 +361,7 @@ ${extends("/goframe/function_layout.httl")}
                 nui.get("saveButton").enable();
             }
         });
+
     }
 
     function saveAndCreate() {
@@ -421,29 +409,37 @@ ${extends("/goframe/function_layout.httl")}
             }
         });
     }
-    /**
-     * 获取需要保存的数据
-     */
     function getSaveData() {
         var baseData = getBaseData();
         if (!baseData) {
             return;
         }
-        var colsData = getColsData();
-        if (!colsData) {
+        var comPropertiesList = getComPropertiess();
+        if (!comPropertiesList) {
             return;
         }
-        var propsData = getPropsData();
-        if (!propsData) {
+        var imModelMappings = getModelMappings();
+        if (!imModelMappings) {
             return;
         }
+        var imModelFilterCols = getImModelFilterCols();
+        if (!imModelFilterCols) {
+            return;
+        }
+        //修改其删除状态
+        baseData.delFlg = "0";
+        //修改其对应的是非实时
+        baseData.type = srcSourceType;
+        baseData.status = "1";
         var saveData = {
-            "imMetadata": baseData,
-            "imMetadataColList": colsData,
-            "comPropertiesList": propsData
+            "imModel": baseData,
+            "imModelMappings": imModelMappings,
+            "imModelFilterCols":imModelFilterCols,
+            "comPropertiesList":comPropertiesList
         };
         return saveData;
     }
+
 
     /**
      * 获取基础数据
@@ -698,7 +694,7 @@ ${extends("/goframe/function_layout.httl")}
         // --配置信息变化--
         grid2.clearRows();
         var dsId = nui.get("dsId").getValue();
-        $.post("${basePath}/goframe/dict/getDictData?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type, {}, function (data) {
+        $.post("${basePath}/goframe/dict/getDictData?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type, {}, function (data) {
             var props = [];
             if (data.length > 0) {
                 for (var i = 0, len = data.length; i < len; i++) {
@@ -827,7 +823,7 @@ ${extends("/goframe/function_layout.httl")}
             return;
         }
         nui.open({
-            url: "${basePath}/goframe/p/com.ds.multi?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type,
+            url: "${basePath}/goframe/p/com.ds.multi?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type,
             title: "批量添加",
             width: 650,
             height: 380,
@@ -888,7 +884,7 @@ ${extends("/goframe/function_layout.httl")}
         // --下拉选项变化--
         if (count == 0) {
             var dsId = dsIdObject.value;
-            e.source.load("${basePath}/goframe/dict/getDictData?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type);
+            e.source.load("${basePath}/goframe/dict/getDictData?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type);
             count++;
         }
     }

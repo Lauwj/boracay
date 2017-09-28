@@ -1,6 +1,5 @@
 package com.hex.bigdata.udsp.im.provider.impl.util;
 
-import com.hex.bigdata.udsp.im.provider.impl.model.datasource.HiveDatasource;
 import com.hex.bigdata.udsp.im.provider.impl.model.datasource.JdbcDatasource;
 import org.apache.commons.dbcp.BasicDataSource;
 import org.apache.commons.lang3.StringUtils;
@@ -79,6 +78,11 @@ public class JdbcUtil {
     }
 
     public static boolean executeUpdate(JdbcDatasource datasource, String updateSql) throws SQLException {
+        return executeUpdate2(datasource, updateSql) == 0 ? true : false;
+    }
+
+    public static int executeUpdate2(JdbcDatasource datasource, String updateSql) throws SQLException {
+        logger.debug("UPDATE SQL:" + updateSql);
         Connection conn = null;
         Statement stmt = null;
         int rs = -1;
@@ -90,7 +94,7 @@ public class JdbcUtil {
             com.hex.bigdata.metadata.db.util.JdbcUtil.close(stmt);
             com.hex.bigdata.metadata.db.util.JdbcUtil.close(conn);
         }
-        return rs == 0 ? true : false;
+        return rs;
     }
 
     public static boolean executeUpdate(JdbcDatasource datasource, List<String> updateSqls) throws SQLException {

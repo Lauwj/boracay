@@ -1,16 +1,19 @@
 package com.hex.bigdata.udsp.im.provider.impl.wrapper;
 
 import com.hex.bigdata.udsp.common.constant.DataType;
+import com.hex.bigdata.udsp.common.util.JSONUtil;
+import com.hex.bigdata.udsp.im.provider.BatchTargetProvider;
+import com.hex.bigdata.udsp.im.provider.RealtimeTargetProvider;
 import com.hex.bigdata.udsp.im.provider.impl.factory.HBaseAdminPoolFactory;
 import com.hex.bigdata.udsp.im.provider.impl.factory.HBaseConnectionPoolFactory;
 import com.hex.bigdata.udsp.im.provider.impl.model.datasource.HBaseDatasource;
 import com.hex.bigdata.udsp.im.provider.impl.model.metadata.HBaseMetadata;
-import com.hex.bigdata.udsp.im.provider.impl.util.model.SerDeProperty;
-import com.hex.bigdata.udsp.im.provider.impl.util.model.TableColumn;
-import com.hex.bigdata.udsp.im.provider.impl.util.model.TblProperty;
+import com.hex.bigdata.udsp.im.provider.impl.util.HBaseUtil;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.*;
 import com.hex.bigdata.udsp.im.provider.model.Metadata;
 import com.hex.bigdata.udsp.im.provider.model.MetadataCol;
 import com.hex.bigdata.udsp.im.provider.model.ModelMapping;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -26,105 +29,18 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.*;
 
 /**
  * Created by JunjieM on 2017-9-7.
  */
-public abstract class HBaseWrapper extends BatchTargetWrapper {
-    static {
-        // 解决winutils.exe不存在的问题
-        try {
-            File workaround = new File(".");
-            System.getProperties().put("hadoop.home.dir",
-                    workaround.getAbsolutePath());
-            new File("./bin").mkdirs();
-            new File("./bin/winutils.exe").createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
+public abstract class HBaseWrapper extends Wrapper implements BatchTargetProvider, RealtimeTargetProvider {
 
     private static Logger logger = LogManager.getLogger(HBaseWrapper.class);
-    private static Map<String, HBaseConnectionPoolFactory> dataSourcePool;
-    private static Map<String, HBaseAdminPoolFactory> hbaseAdminPool;
 
-    private static final String HBASE_REGION_START_KEY = "0000000000000000";
-    private static final String HBASE_REGION_STOP_KEY = "ffffffffffffffff";
     protected static final String HIVE_ENGINE_STORAGE_HANDLER_CLASS = "org.apache.hadoop.hive.hbase.HBaseStorageHandler";
-
-    protected synchronized HBaseAdminPoolFactory getHBaseAdminFactory(HBaseDatasource datasource) {
-        String dsId = datasource.getId();
-        if (hbaseAdminPool == null) {
-            hbaseAdminPool = new HashMap<>();
-        }
-        HBaseAdminPoolFactory factory = hbaseAdminPool.get(dsId);
-        if (factory == null) {
-            GenericObjectPool.Config config = new GenericObjectPool.Config();
-            config.lifo = true;
-            config.minIdle = 1;
-            config.maxActive = 10;
-            config.maxWait = 3000;
-            config.maxActive = 5;
-            config.timeBetweenEvictionRunsMillis = 30000;
-            config.testWhileIdle = true;
-            config.testOnBorrow = false;
-            config.testOnReturn = false;
-            factory = new HBaseAdminPoolFactory(config, datasource);
-        }
-        hbaseAdminPool.put(dsId, factory);
-        return factory;
-    }
-
-    protected HBaseAdmin getHBaseAdmin(HBaseDatasource datasource) {
-        try {
-            return getHBaseAdminFactory(datasource).getHBaseAdmin();
-        } catch (Exception e) {
-            logger.warn(e.getMessage());
-            return null;
-        }
-    }
-
-    protected void release(HBaseDatasource datasource, HBaseAdmin admin) {
-        getHBaseAdminFactory(datasource).releaseHBaseAdmin(admin);
-    }
-
-    protected synchronized HBaseConnectionPoolFactory getDataSource(HBaseDatasource datasource) {
-        String dsId = datasource.getId();
-        if (dataSourcePool == null) {
-            dataSourcePool = new HashMap<>();
-        }
-        HBaseConnectionPoolFactory factory = dataSourcePool.get(dsId);
-        if (factory == null) {
-            GenericObjectPool.Config config = new GenericObjectPool.Config();
-            config.lifo = true;
-            config.minIdle = 1;
-            config.maxActive = 10;
-            config.maxWait = 3000;
-            config.maxActive = 5;
-            config.timeBetweenEvictionRunsMillis = 30000;
-            config.testWhileIdle = true;
-            config.testOnBorrow = false;
-            config.testOnReturn = false;
-            factory = new HBaseConnectionPoolFactory(config, datasource);
-        }
-        dataSourcePool.put(dsId, factory);
-        return factory;
-    }
-
-    protected HConnection getConnection(HBaseDatasource datasource) {
-        try {
-            return getDataSource(datasource).getConnection();
-        } catch (Exception e) {
-            logger.warn(e.getMessage());
-            return null;
-        }
-    }
-
-    protected void release(HBaseDatasource datasource, HConnection conn) {
-        getDataSource(datasource).releaseConnection(conn);
-    }
 
     protected List<TableColumn> getTargetColumns(List<ModelMapping> modelMappings, HBaseMetadata hbaseMetadata) {
         List<TableColumn> columns = new ArrayList<>();
@@ -151,7 +67,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
 
     @Override
     protected List<String> getSelectColumns(List<ModelMapping> modelMappings, Metadata metadata) {
-        List<java.lang.String> selectColumns = new ArrayList<>();
+        List<String> selectColumns = new ArrayList<>();
         HBaseMetadata hBaseMetadata = new HBaseMetadata(metadata);
         String fqDataType = hBaseMetadata.getFqDataType();
         String fqDsvSeprator = hBaseMetadata.getFqDsvSeprator();
@@ -175,9 +91,9 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
             if (stored) vals.add(mdCol);
         }
         if ("json".equalsIgnoreCase(fqDataType)) {
-            val = getJsonValue(vals);
+            val = getJsonValueSql(vals);
         } else {
-            val = getDsvValue(vals, fqDsvSeprator);
+            val = getDsvValueSql(vals, fqDsvSeprator);
         }
         selectColumns.add(val);
         /*
@@ -208,7 +124,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
                 }
             }
             if (StringUtils.isBlank(key)) {
-                key = getKey(keys, dts, vals);
+                key = getKeySql(keys, dts, vals);
             }
         } else if (count == 1) { // 一个主键
             for (ModelMapping mapping : modelMappings) {
@@ -221,7 +137,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
                 }
             }
         } else { // 多个主键
-            key = "SUBSTR(SYS_MD5(CONCAT(";
+            key = "SUBSTR(SYS_MD5(CONCAT_WS('|',";
             for (int i = 0; i < modelMappings.size(); i++) {
                 String sName = modelMappings.get(i).getName();
                 MetadataCol mdCol = modelMappings.get(i).getMetadataCol();
@@ -237,22 +153,13 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
         return selectColumns;
     }
 
-    private String getKey(List<MetadataCol> keys, List<MetadataCol> dts, List<MetadataCol> vals) {
+    private String getKeySql(List<MetadataCol> keys, List<MetadataCol> dts, List<MetadataCol> vals) {
         if ((keys == null || keys.size() == 0) && (dts == null || dts.size() == 0)) {
             throw new IllegalArgumentException("keys和dts不能同时为空");
         }
         String sql = "\nCONCAT_WS('|',";
         // 哈希头
-        if (keys != null && keys.size() > 0) {
-            sql += "\nSUBSTR(SYS_MD5(CONCAT(";
-            for (int i = 0; i < keys.size(); i++) {
-                MetadataCol mdCol = keys.get(i);
-                String name = mdCol.getName();
-                sql += (i == 0 ? "NVL(CAST(" + name + " AS STRING),'')"
-                        : ",NVL(CAST(" + name + " AS STRING),'')");
-            }
-            sql += ")),9,16),";
-        }
+        sql += getHashStrSql(keys);
         // 普通字段
         if (keys != null && keys.size() > 0) {
             for (int i = 0; i < keys.size(); i++) {
@@ -272,6 +179,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
                 String name = mdCol.getName();
                 String length = mdCol.getLength();
                 int len = getLen(length);
+                sql += (keys.size() == 0 ? "" : ",");
                 if (len == 10) {
                     sql += "SUBSTR(" + name + ",1,10)";
                 } else if (len == 8) {
@@ -282,21 +190,27 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
             }
         }
         // 哈希尾
-        if (vals != null && vals.size() > 0) {
-            sql += "\nSUBSTR(SYS_MD5(CONCAT_WS('|',";
-            for (int i = 0; i < vals.size(); i++) {
-                MetadataCol mdCol = vals.get(i);
+        sql += getHashStrSql(vals);
+        sql += ") AS KEY";
+        return sql;
+    }
+
+    private String getHashStrSql(List<MetadataCol> list) {
+        String sql = "";
+        if (list != null && list.size() > 0) {
+            sql = "\nSUBSTR(SYS_MD5(CONCAT_WS('|',";
+            for (int i = 0; i < list.size(); i++) {
+                MetadataCol mdCol = list.get(i);
                 String name = mdCol.getName();
                 sql += (i == 0 ? "NVL(CAST(" + name + " AS STRING),'')"
                         : ",NVL(CAST(" + name + " AS STRING),'')");
             }
             sql += ")),9,16),";
         }
-        sql += ") AS KEY";
         return sql;
     }
 
-    private int getLen(String length) {
+    protected int getLen(String length) {
         int len = 0;
         if (StringUtils.isNotBlank(length)) {
             try {
@@ -308,7 +222,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
         return len;
     }
 
-    private String getJsonValue(List<MetadataCol> vals) {
+    private String getJsonValueSql(List<MetadataCol> vals) {
         if (vals == null || vals.size() == 0) {
             throw new IllegalArgumentException("vals不能为空");
         }
@@ -321,7 +235,7 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
         return sql;
     }
 
-    private String getDsvValue(List<MetadataCol> vals, String seprator) {
+    private String getDsvValueSql(List<MetadataCol> vals, String seprator) {
         if (vals == null || vals.size() == 0) {
             throw new IllegalArgumentException("vals不能为空");
         }
@@ -341,257 +255,225 @@ public abstract class HBaseWrapper extends BatchTargetWrapper {
         return insertColumns;
     }
 
-    /**
-     * 创建HBase表
-     *
-     * @return
-     */
-    protected boolean createHTable(HBaseMetadata metadata) throws IOException {
-        HBaseDatasource datasource = new HBaseDatasource(metadata.getDatasource().getPropertyMap());
-        HBaseAdmin admin = getHBaseAdmin(datasource);
+    @Override
+    protected void insertInto(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns) throws Exception {
         String tableName = metadata.getTbName();
-        TableName hbaseTableName = TableName.valueOf(tableName);
-        // 判断是否已经存在该表
-        boolean status = false;
-        try {
-            status = admin.isTableAvailable(hbaseTableName);
-        } catch (IOException e1) {
-            release(datasource, admin);
-            throw new IOException(e1.getMessage());
+        HBaseDatasource hBaseDatasource = new HBaseDatasource(metadata.getDatasource().getPropertyMap());
+        HBaseMetadata hBaseMetadata = new HBaseMetadata(metadata);
+        String fqDataType = hBaseMetadata.getFqDataType();
+        String fqDsvSeprator = hBaseMetadata.getFqDsvSeprator();
+        String family = hBaseMetadata.getFamily();
+        String qualifier = hBaseMetadata.getQualifier();
+        // 按照目标元数据字段升序
+        Collections.sort(modelMappings, new Comparator<ModelMapping>() {
+            @Override
+            public int compare(ModelMapping o1, ModelMapping o2) {
+                return o1.getMetadataCol().getSeq().compareTo(o2.getMetadataCol().getSeq());
+            }
+        });
+        // 转为Map
+        Map<String, String> valueMap = new HashMap<>();
+        for (ValueColumn column : valueColumns) {
+            valueMap.put(column.getColName(), column.getValue());
         }
-        // 不存在该表
-        if (status) {
-            System.out.println("HBase表" + tableName + "已经存在！");
-            throw new IOException("HBase表" + tableName + "已经存在！");
+        /*
+        根据目标元数据字段信息获取val值
+         */
+        String value = "";
+        List<MetadataCol> vals = new ArrayList<>();
+        for (ModelMapping mapping : modelMappings) {
+            String sName = mapping.getName();
+            MetadataCol mdCol = mapping.getMetadataCol();
+            boolean stored = mdCol.isStored();
+            mdCol.setName(sName);
+            if (stored) vals.add(mdCol);
+        }
+        if ("json".equalsIgnoreCase(fqDataType)) {
+            value = getJsonValue(vals, valueMap);
         } else {
-            HTableDescriptor hbaseTable = new HTableDescriptor(hbaseTableName);
-            // 族设置参数
-            HColumnDescriptor hbaseColumn = new HColumnDescriptor(metadata.getFamily());
-            hbaseColumn.setBlocksize(65536); // 块大小
-            // 压缩
-            String compression = metadata.getCompression();
-            if (Compression.Algorithm.SNAPPY.getName().equals(compression)) {
-                hbaseColumn.setCompressionType(Compression.Algorithm.SNAPPY);
-            } else if (Compression.Algorithm.GZ.getName().equals(compression)) {
-                hbaseColumn.setCompressionType(Compression.Algorithm.GZ);
-            } else if (Compression.Algorithm.LZ4.getName().equals(compression)) {
-                hbaseColumn.setCompressionType(Compression.Algorithm.LZ4);
-            } else if (Compression.Algorithm.LZO.getName().equals(compression)) {
-                hbaseColumn.setCompressionType(Compression.Algorithm.LZO);
-            } else if (Compression.Algorithm.NONE.getName().equals(compression)) {
-                hbaseColumn.setCompressionType(Compression.Algorithm.NONE);
-            }
-            hbaseColumn.setMaxVersions(1); // 数据保存的最大版本数
-            // hbaseColumn.setMinVersions(0); // 数据保存的最小版本数（配合TimeToLive使用）
-            // hbaseColumn.setTimeToLive(36000); // 表中数据存储生命期，过期数据将自动被删除
-            hbaseColumn.setBloomFilterType(BloomType.ROW); //
-            hbaseColumn.setDataBlockEncoding(DataBlockEncoding.PREFIX);
-            hbaseColumn.setBlockCacheEnabled(true); //
-            hbaseColumn.setInMemory(false); // 是否保存在内存中以提高相应速度
-            hbaseTable.addFamily(hbaseColumn);
-            // 表设置参数
-            String splitPolicy = metadata.getSplitPolicy();
-            if (StringUtils.isNotBlank(splitPolicy)) {
-                hbaseTable.setConfiguration(HTableDescriptor.SPLIT_POLICY, splitPolicy);
-            }
-            // 创建表
-            byte[][] regionSplits = getHexSplits(HBASE_REGION_START_KEY, HBASE_REGION_STOP_KEY, metadata.getRegionNum());
-            try {
-                admin.createTable(hbaseTable, regionSplits);
-                System.out.println("HBase表" + tableName + "创建成功！");
-                return true;
-            } catch (IOException e) {
-                System.out.println("HBase表" + tableName + "创建失败！");
-                throw new IOException("HBase表" + tableName + "创建失败！" + e.getMessage());
-            } finally {
-                release(datasource, admin);
-            }
+            value = getDsvValue(vals, fqDsvSeprator, valueMap);
         }
-    }
-
-    /**
-     * 禁用HBase表
-     *
-     * @param tableName
-     * @return
-     */
-    protected boolean disableHTable(HBaseDatasource datasource, String tableName) throws IOException {
-        HBaseAdmin admin = getHBaseAdmin(datasource);
-        TableName hbaseTableName = TableName.valueOf(tableName);
-        // 判断是否已经存在该表
-        boolean status = false;
-        try {
-            status = admin.isTableAvailable(hbaseTableName);
-        } catch (IOException e1) {
-            release(datasource, admin);
-            throw new IOException(e1.getMessage());
+        /*
+         根据目标元数据字段信息获取key值
+         */
+        int count = 0;
+        for (ModelMapping mapping : modelMappings) {
+            MetadataCol mdCol = mapping.getMetadataCol();
+            boolean primary = mdCol.isPrimary();
+            if (primary) count++;
         }
-        // 存在该表
-        if (status) {
-            try {
-                admin.disableTable(hbaseTableName);
-                System.out.println("HBase表" + tableName + "禁用成功！");
-                return true;
-            } catch (IOException e) {
-                System.out.println("HBase表" + tableName + "禁用失败！");
-                throw new IOException("HBase表" + tableName + "禁用失败！" + e.getMessage());
-            } finally {
-                release(datasource, admin);
-            }
-        } else {
-            System.out.println("HBase表" + tableName + "不存在！");
-            throw new IOException("HBase表" + tableName + "不存在！");
-        }
-    }
-
-    /**
-     * 删除HBase表（必须先禁用才可删除）
-     *
-     * @param tableName
-     * @return
-     */
-    protected boolean deleteHTable(HBaseDatasource datasource, String tableName) throws IOException {
-        HBaseAdmin admin = getHBaseAdmin(datasource);
-        TableName hbaseTableName = TableName.valueOf(tableName);
-        // 判断是否已经存在该表
-        boolean status = false;
-        try {
-            status = admin.isTableAvailable(hbaseTableName);
-        } catch (IOException e1) {
-            release(datasource, admin);
-            throw new IOException(e1.getMessage());
-        }
-        // 存在该表
-        if (status) {
-            try {
-                admin.deleteTable(hbaseTableName);
-                System.out.println("HBase表" + tableName + "删除成功！");
-                return true;
-            } catch (IOException e) {
-                System.out.println("HBase表" + tableName + "删除失败！");
-                throw new IOException("HBase表" + tableName + "删除失败！" + e.getMessage());
-            } finally {
-                release(datasource, admin);
-            }
-        } else {
-            System.out.println("HBase表" + tableName + "不存在！");
-            throw new IOException("HBase表" + tableName + "不存在！");
-        }
-    }
-
-    /**
-     * 一步删除HBase表
-     *
-     * @param tableName
-     * @return
-     */
-    protected boolean dropHTable(HBaseDatasource datasource, String tableName) throws IOException {
-        HBaseAdmin admin = getHBaseAdmin(datasource);
-        TableName hbaseTableName = TableName.valueOf(tableName);
-        // 判断是否已经存在该表
-        boolean status = false;
-        try {
-            status = admin.isTableAvailable(hbaseTableName);
-        } catch (IOException e1) {
-            release(datasource, admin);
-            throw new IOException(e1.getMessage());
-        }
-        // 存在该表
-        if (status) {
-            try {
-                admin.disableTable(hbaseTableName);
-                System.out.println("HBase表" + tableName + "禁用成功！");
-                try {
-                    admin.deleteTable(hbaseTableName);
-                    System.out.println("HBase表" + tableName + "删除成功！");
-                    return true;
-                } catch (IOException e) {
-                    System.out.println("HBase表" + tableName + "删除失败！");
-                    throw new IOException("HBase表" + tableName + "删除失败！" + e.getMessage());
-                } finally {
-                    release(datasource, admin);
+        String rowkey = "";
+        if (count == 0) { // 没有主键
+            List<MetadataCol> dts = new ArrayList<>();
+            List<MetadataCol> keys = new ArrayList<>();
+            for (ModelMapping mapping : modelMappings) {
+                String sName = mapping.getName();
+                MetadataCol mdCol = mapping.getMetadataCol();
+                DataType tType = mdCol.getType();
+                boolean indexed = mdCol.isIndexed();
+                if (indexed) {
+                    mdCol.setName(sName);
+                    if (DataType.TIMESTAMP == tType) {
+                        dts.add(mdCol);
+                    } else {
+                        keys.add(mdCol);
+                    }
                 }
-            } catch (IOException e) {
-                System.out.println("HBase表" + tableName + "禁用失败！");
-                throw new IOException("HBase表" + tableName + "禁用失败！" + e.getMessage());
-            } finally {
-                release(datasource, admin);
             }
-        } else {
-            System.out.println("HBase表" + tableName + "不存在！");
-            throw new IOException("HBase表" + tableName + "不存在！");
+            if (StringUtils.isBlank(rowkey)) {
+                rowkey = getKey(keys, dts, vals, valueMap);
+            }
+        } else if (count == 1) { // 一个主键
+            for (ModelMapping mapping : modelMappings) {
+                String sName = mapping.getName();
+                MetadataCol mdCol = mapping.getMetadataCol();
+                boolean primary = mdCol.isPrimary();
+                if (primary) {
+                    rowkey = valueMap.get(sName);
+                    break;
+                }
+            }
+        } else { // 多个主键
+            rowkey = "";
+            for (int i = 0; i < modelMappings.size(); i++) {
+                String sName = modelMappings.get(i).getName();
+                MetadataCol mdCol = modelMappings.get(i).getMetadataCol();
+                boolean primary = mdCol.isPrimary();
+                if (primary) {
+                    rowkey += (i == 0 ? "" : "|");
+                    rowkey += valueMap.get(sName);
+                }
+            }
+            rowkey = md5_16(rowkey);
         }
+
+        HBaseUtil.put(hBaseDatasource, tableName, rowkey, family, qualifier, value);
     }
 
-    /**
-     * 清空HBase表数据
-     */
-    protected boolean emptyHTable(HBaseMetadata metadata) throws IOException {
-        HBaseDatasource datasource = new HBaseDatasource(metadata.getDatasource().getPropertyMap());
-        String tableName = metadata.getTbName();
-        if (dropHTable(datasource, tableName)) {
-            return createHTable(metadata);
+    private String getKey(List<MetadataCol> keys, List<MetadataCol> dts, List<MetadataCol> vals, Map<String, String> valueMap) {
+        if ((keys == null || keys.size() == 0) && (dts == null || dts.size() == 0)) {
+            throw new IllegalArgumentException("keys和dts不能同时为空");
         }
-        return false;
+        List<String> list = new ArrayList<>();
+        String str = null;
+        // 哈希头
+        str = getHashStr(keys, valueMap);
+        if (StringUtils.isNotBlank(str)) list.add(str);
+        // 普通字段
+        if (keys != null && keys.size() > 0) {
+            str = "";
+            for (int i = 0; i < keys.size(); i++) {
+                MetadataCol mdCol = keys.get(i);
+                String name = mdCol.getName();
+                String value = valueMap.get(name);
+                int len = getLen(mdCol.getLength());
+                str += (i == 0 ? "" : "|");
+                str += (len <= 0 ? value : realValue(value, len));
+            }
+        }
+        list.add(str);
+        // 日期字段
+        if (dts != null && dts.size() > 0) {
+            str = "";
+            for (int i = 0; i < dts.size(); i++) {
+                MetadataCol mdCol = dts.get(i);
+                String name = mdCol.getName();
+                String value = valueMap.get(name);
+                int len = getLen(mdCol.getLength());
+                str += (i == 0 ? "" : "|");
+                if (len == 10) {
+                    str += value.substring(0, 10);
+                } else if (len == 8) {
+                    str += replaceDateStr(value).substring(0, 8);
+                } else {
+                    str += name;
+                }
+            }
+        }
+        list.add(str);
+        // 哈希尾
+        str = getHashStr(vals, valueMap);
+        if (StringUtils.isNotBlank(str)) list.add(str);
+
+        return String.join("|", list);
     }
 
-    /**
-     * 清空HBase表数据
-     */
-    protected boolean emptyHTable(HBaseDatasource datasource, String tableName, int numRegions) throws IOException {
-        if (dropHTable(datasource, tableName)) {
-            TableName hbaseTableName = TableName.valueOf(tableName);
-            HConnection conn = getConnection(datasource);
-            HBaseAdmin admin = getHBaseAdmin(datasource);
-            byte[][] regionSplits = getHexSplits(HBASE_REGION_START_KEY, HBASE_REGION_STOP_KEY, numRegions);
-            try {
-                HTableDescriptor hbaseTable = conn.getHTableDescriptor(hbaseTableName);
-                admin.createTable(hbaseTable, regionSplits);
-                System.out.println("HBase表" + tableName + "创建成功！");
-                return true;
-            } catch (IOException e) {
-                System.out.println("HBase表" + tableName + "创建失败！");
-                throw new IOException("HBase表" + tableName + "创建失败！" + e.getMessage());
-            } finally {
-                release(datasource, admin);
-                release(datasource, conn);
-            }
-        }
-        return false;
+    // 获取不同编码的字符串长度
+    private int countCode(String str, String code) throws UnsupportedEncodingException {
+        return str.getBytes(code).length;
     }
 
-    /**
-     * 获取HBase Regions分区的Hex Splits
-     *
-     * @param startKey
-     * @param endKey
-     * @param numRegions
-     * @return
-     */
-    protected byte[][] getHexSplits(String startKey, String endKey, int numRegions) {
-        byte[][] splits = new byte[numRegions - 1][];
-        if (startKey.length() < 16) {
-            int len = 16 - startKey.length();
-            for (int i = 0; i < len; i++) {
-                startKey += "0";
+    //得到需要的字符串
+    private String realValue(String value, int length) {
+        int len = 0;
+        try {
+            len = countCode(value, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        if (len < length) {
+            for (int i = 0; i < length - len; i++) {
+                value = value + ' ';
             }
         }
-        if (endKey.length() < 16) {
-            int len = 16 - endKey.length();
-            for (int i = 0; i < len; i++) {
-                endKey += "0";
+        return value;
+    }
+
+    // 转为8位日期
+    private String replaceDateStr(String dataStr) {
+        dataStr = dataStr.replaceAll("-", "");
+        dataStr = dataStr.replaceAll("/", "");
+        return dataStr;
+    }
+
+    private String getHashStr(List<MetadataCol> list, Map<String, String> valueMap) {
+        if (list != null && list.size() > 0) {
+            String str = "";
+            for (int i = 0; i < list.size(); i++) {
+                String key = list.get(i).getName();
+                str += (i == 0 ? "" : "|");
+                str += valueMap.get(key);
             }
+            return md5_16(str);
         }
-        BigInteger lowestKey = new BigInteger(startKey, 16);
-        BigInteger highestKey = new BigInteger(endKey, 16);
-        BigInteger range = highestKey.subtract(lowestKey);
-        BigInteger regionIncrement = range.divide(BigInteger.valueOf(numRegions));
-        lowestKey = lowestKey.add(regionIncrement);
-        for (int i = 0; i < numRegions - 1; i++) {
-            BigInteger key = lowestKey.add(regionIncrement.multiply(BigInteger.valueOf(i)));
-            byte[] b = String.format("%016x", key).getBytes();
-            splits[i] = b;
+        return null;
+    }
+
+    //得到16位的MD5
+    private String md5_16(String str) {
+        return DigestUtils.md5Hex(str).substring(8, 24);
+    }
+
+    private String getJsonValue(List<MetadataCol> vals, Map<String, String> valueMap) {
+        if (vals == null || vals.size() == 0) {
+            throw new IllegalArgumentException("vals不能为空");
         }
-        return splits;
+        Map<String, String> map = new HashMap<>();
+        for (MetadataCol col : vals) {
+            String key = col.getName();
+            map.put(key, valueMap.get(key));
+        }
+        return JSONUtil.parseMap2JSON(map);
+    }
+
+    private String getDsvValue(List<MetadataCol> vals, String seprator, Map<String, String> valueMap) {
+        if (vals == null || vals.size() == 0) {
+            throw new IllegalArgumentException("vals不能为空");
+        }
+        List<String> list = new ArrayList<>();
+        for (MetadataCol col : vals) {
+            list.add(valueMap.get(col.getName()));
+        }
+        return String.join(seprator, list);
+    }
+
+    @Override
+    protected void updateInsert(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        insertInto(metadata, modelMappings, valueColumns);
+    }
+
+    @Override
+    protected void matchingUpdate(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        insertInto(metadata, modelMappings, valueColumns);
     }
 }

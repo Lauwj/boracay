@@ -126,11 +126,7 @@ public class HiveSqlUtil {
             sql = "\n PARTITION (";
             if (columns != null && columns.size() != 0) {
                 for (int i = 0; i < columns.size(); i++) {
-                    if (i == 0) {
-                        sql += columns.get(i);
-                    } else {
-                        sql += ", " + columns.get(i);
-                    }
+                    sql += (i == 0 ? columns.get(i) : ", " + columns.get(i));
                 }
             }
             sql += ")";
@@ -140,16 +136,14 @@ public class HiveSqlUtil {
 
     private static String getWhere(List<WhereProperty> whereProperties) {
         String sql = "";
-        WhereProperty whereProperty = null;
         String name = null;
         String value = null;
         DataType type = null;
         Operator operator = null;
-        String str = null;
+        int count = 0;
         if (whereProperties != null && whereProperties.size() != 0) {
             sql = "\n WHERE ";
-            for (int i = 0; i < whereProperties.size(); i++) {
-                whereProperty = whereProperties.get(i);
+            for (WhereProperty whereProperty : whereProperties) {
                 name = whereProperty.getName();
                 value = whereProperty.getValue();
                 type = whereProperty.getType();
@@ -157,8 +151,9 @@ public class HiveSqlUtil {
                 if (StringUtils.isBlank(name) || StringUtils.isBlank(value) || operator == null) {
                     continue;
                 }
-                str = name + getCondition(value, type, operator);
-                sql += (i == 0 ? str : " AND " + str);
+                sql += (count == 0 ? "" : " AND ");
+                sql += name + SqlUtil.getCondition(value, type, operator);
+                count++;
             }
         }
         return sql;
@@ -166,84 +161,26 @@ public class HiveSqlUtil {
 
     private static String getWhere2(List<WhereProperty> whereProperties) {
         String sql = "";
-        WhereProperty whereProperty = null;
         String name = null;
         String value = null;
         DataType type = null;
         Operator operator = null;
-        String str = null;
+        int count = 0;
         if (whereProperties != null && whereProperties.size() != 0) {
             sql = "\n WHERE ";
-            for (int i = 0; i < whereProperties.size(); i++) {
-                whereProperty = whereProperties.get(i);
+            for (WhereProperty whereProperty : whereProperties) {
                 name = whereProperty.getName();
                 value = whereProperty.getValue();
                 type = whereProperty.getType();
                 operator = whereProperty.getOperator();
-                if (StringUtils.isBlank(name) || StringUtils.isBlank(value) || operator == null) {
+                if (StringUtils.isBlank(name) || StringUtils.isBlank(value) || operator == null)
                     continue;
-                }
-                str = "UDSP_VIEW." + name + getCondition(value, type, operator);
-                sql += (i == 0 ? str : " AND " + str);
+                sql += (count == 0 ? "" : " AND ");
+                sql += "UDSP_VIEW." + name + SqlUtil.getCondition(value, type, operator);
+                count++;
             }
         }
         return sql;
-    }
-
-    private static String getCondition(String value, DataType type, Operator operator) {
-        String str = "";
-        if (DataType.INT == type || DataType.TINYINT == type || DataType.DOUBLE == type
-                || DataType.DECIMAL == type || DataType.BIGINT == type || DataType.FLOAT == type
-                || DataType.SMALLINT == type) {
-            if (Operator.EQ == operator) {
-                str = " = " + value;
-            } else if (Operator.NE == operator) {
-                str = " != " + value;
-            } else if (Operator.GE == operator) {
-                str = " >= " + value;
-            } else if (Operator.GT == operator) {
-                str = " > " + value;
-            } else if (Operator.LE == operator) {
-                str = " <= " + value;
-            } else if (Operator.LT == operator) {
-                str = " < " + value;
-            } else if (Operator.IN == operator) {
-                str = " IN (" + value + ")";
-            } else if (Operator.LK == operator) {
-                str = " LIKE '%" + value + "%'";
-            } else if (Operator.RLIKE == operator) {
-                str = " LIKE '" + value + "%'";
-            }
-        } else {
-            if (Operator.EQ == operator) {
-                str = " = '" + value + "'";
-            } else if (Operator.NE == operator) {
-                str = " != '" + value + "'";
-            } else if (Operator.GE == operator) {
-                str = " >= '" + value + "'";
-            } else if (Operator.GT == operator) {
-                str = " > '" + value + "'";
-            } else if (Operator.LE == operator) {
-                str = " <= '" + value + "'";
-            } else if (Operator.LT == operator) {
-                str = " < '" + value + "'";
-            } else if (Operator.IN == operator) {
-                String[] strs = value.split(",");
-                for (int j = 0; j < strs.length; j++) {
-                    if (j == 0) {
-                        value = "'" + strs[j] + "'";
-                    } else {
-                        value += ",'" + strs[j] + "'";
-                    }
-                }
-                str = " IN (" + value + ")";
-            } else if (Operator.LK == operator) {
-                str = " LIKE '%" + value + "%'";
-            } else if (Operator.RLIKE == operator) {
-                str = " LIKE '" + value + "%'";
-            }
-        }
-        return str;
     }
 
     private static String getInsertColumns(List<String> columns) {
@@ -251,11 +188,8 @@ public class HiveSqlUtil {
         if (columns != null && columns.size() != 0) {
             sql = " (";
             for (int i = 0; i < columns.size(); i++) {
-                if (i == 0) {
-                    sql += columns.get(i);
-                } else {
-                    sql += ", " + columns.get(i);
-                }
+                sql += (i == 0 ? "" : ",");
+                sql += columns.get(i);
             }
             sql += ")";
         }
@@ -263,31 +197,21 @@ public class HiveSqlUtil {
     }
 
     private static String getSelectColumns(List<String> columns) {
-        String sql = " * ";
+        return getColumns(columns, " * ");
+    }
+
+    private static String getColumns(List<String> columns, String sql) {
         if (columns != null && columns.size() != 0) {
             for (int i = 0; i < columns.size(); i++) {
-                if (i == 0) {
-                    sql = " " + columns.get(i);
-                } else {
-                    sql += ", " + columns.get(i);
-                }
+                sql += (i == 0 ? "" : ",");
+                sql += columns.get(i);
             }
         }
         return sql;
     }
 
     private static String getSelectColumns2(List<String> columns) {
-        String sql = " UDSP_VIEW.* ";
-        if (columns != null && columns.size() != 0) {
-            for (int i = 0; i < columns.size(); i++) {
-                if (i == 0) {
-                    sql = " " + columns.get(i);
-                } else {
-                    sql += ", " + columns.get(i);
-                }
-            }
-        }
-        return sql;
+        return getColumns(columns, " UDSP_VIEW.* ");
     }
 
     private static String getOverwrite(boolean isOverwrite) {
@@ -309,10 +233,8 @@ public class HiveSqlUtil {
             sql = "\n WITH SERDEPROPERTIES (";
             for (int i = 0; i < serDeProperties.size(); i++) {
                 property = serDeProperties.get(i);
-                if (i == 0)
-                    sql += "\n'" + property.getKey() + "' = '" + property.getValue() + "'";
-                else
-                    sql += "\n ,'" + property.getKey() + "' = '" + property.getValue() + "'";
+                sql += (i == 0 ? "\n" : "\n,");
+                sql += "'" + property.getKey() + "' = '" + property.getValue() + "'";
             }
             sql += "\n)";
         }
@@ -326,10 +248,8 @@ public class HiveSqlUtil {
             sql = "\n TBLPROPERTIES (";
             for (int i = 0; i < tblPropertiess.size(); i++) {
                 property = tblPropertiess.get(i);
-                if (i == 0)
-                    sql += "\n'" + property.getKey() + "' = '" + property.getValue() + "'";
-                else
-                    sql += "\n ,'" + property.getKey() + "' = '" + property.getValue() + "'";
+                sql += (i == 0 ? "\n" : "\n,");
+                sql += "'" + property.getKey() + "' = '" + property.getValue() + "'";
             }
             sql += "\n)";
         }
@@ -370,30 +290,26 @@ public class HiveSqlUtil {
 
     private static String getColumns(List<TableColumn> columns) {
         String sql = "";
-        TableColumn column = null;
         String colName = "";
         String dataType = "";
         String colComment = "";
         String length = "";
+        int count = 0;
         if (columns != null && columns.size() != 0) {
             sql = "\n (";
-            for (int i = 0; i < columns.size(); i++) {
-                column = columns.get(i);
+            for (TableColumn column : columns) {
                 colName = column.getColName();
                 dataType = column.getDataType();
                 colComment = column.getColComment();
                 length = column.getLength();
-                if (StringUtils.isNoneBlank(colName) && StringUtils.isNoneBlank(dataType)) {
-                    dataType = getColType(dataType, length);
-                    if (i == 0) {
-                        sql += "\n" + colName + " " + dataType;
-                    } else {
-                        sql += "\n, " + colName + " " + dataType;
-                    }
-                    if (StringUtils.isNoneBlank(colComment)) {
-                        sql += " COMMENT '" + colComment + "'";
-                    }
+                if (StringUtils.isBlank(colName) || StringUtils.isBlank(dataType))
+                    continue;
+                sql += (count == 0 ? "\n" : "\n,");
+                sql += colName + " " + getColType(dataType, length);
+                if (StringUtils.isNoneBlank(colComment)) {
+                    sql += " COMMENT '" + colComment + "'";
                 }
+                count++;
             }
             sql += "\n)";
         }
@@ -401,11 +317,11 @@ public class HiveSqlUtil {
     }
 
     private static String getColType(String dataType, String length) {
-        if ("VARCHAR".equals(dataType)) {
+        if (DataType.VARCHAR.getValue().equals(dataType)) {
             dataType = "VARCHAR(" + length + ")";
-        } else if ("CHAR".equals(dataType)) {
+        } else if (DataType.CHAR.getValue().equals(dataType)) {
             dataType = "CHAR(" + length + ")";
-        } else if ("DECIMAL".equals(dataType)) {
+        } else if (DataType.DECIMAL.getValue().equals(dataType)) {
             dataType = "DECIMAL(" + length + ")";
         }
         return dataType;

@@ -26,28 +26,19 @@ public class JdbcModel extends Model {
         super(model);
     }
 
-    public JdbcModel(List<Property> properties, Datasource srcDatasource){
-        super(properties,srcDatasource);
+    public JdbcModel(List<Property> properties, Datasource srcDatasource) {
+        super(properties, srcDatasource);
     }
 
     public String getDatabaseName() {
-        String value = getProperty("hive.database.name").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.database.name不能为空");
-        return value;
+        return getProperty("database.name").getValue();
     }
 
     public String getTableName() {
-        String value = getProperty("hive.table.name").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.table.name不能为空");
-        return value;
+        return getProperty("table.name").getValue();
     }
 
-    public String getSql() {
-        String value = getProperty("hive.sql").getValue();
-        //if (StringUtils.isBlank(value))
-        //    throw new IllegalArgumentException("hive.sql不能为空");
-        return value;
+    public String getSelectSql() {
+        return getProperty("select.sql").getValue();
     }
 }

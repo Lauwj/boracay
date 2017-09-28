@@ -97,6 +97,11 @@ public class ImModelService {
         String pkId = Util.uuid();
         ImModel model = imModelViews.getImModel();
         model.setPkId(pkId);
+        if("1".equals(model.getType())) { // 批量
+            model.setStatus("2"); // 未建
+        }else if("2".equals(model.getType())){ // 实时
+            model.setStatus("1"); // 已建
+        }
         if (!imModelMapper.insert(pkId, model)) {
             throw new RuntimeException("保存配置栏基础信息异常");
         }
@@ -134,6 +139,11 @@ public class ImModelService {
         ImModel model = imModelViews.getImModel();
         //获取模型主键
         String pkId = model.getPkId();
+        if("1".equals(model.getType())) { // 批量
+            model.setStatus("1"); // 未建
+        }else if("2".equals(model.getType())){ // 实时
+            model.setStatus("2"); // 已建
+        }
         if (!imModelMapper.update(pkId, model)) {
             //添加运行时异常，使事务回滚
             throw new RuntimeException("更新配置栏基础信息异常");
@@ -632,9 +642,9 @@ public class ImModelService {
 
         metadata.setTbName(imMetadata.getTbName());
 
-        if("1".equals(imMetadata.getType())){
+        if("0".equals(imMetadata.getType())){
             metadata.setType(MetadataType.INTERIOR);
-        }else if("2".equals(imMetadata.getType())){
+        }else if("1".equals(imMetadata.getType())){
             metadata.setType(MetadataType.EXTERNAL);
         }
 
@@ -700,6 +710,7 @@ public class ImModelService {
         metadataCol.setNote(imMetadataCol.getNote());
         metadataCol.setStored(imMetadataCol.getStored().equals("0"));
         metadataCol.setPrimary(imMetadataCol.getPrimary().equals("0"));
+        metadataCol.setLength(imMetadataCol.getLength());
     }
     //映射字段转换
     private void transformModelMapping(ImModelMapping imModelMapping,ModelMapping modelMapping) throws Exception{
@@ -722,15 +733,5 @@ public class ImModelService {
         modelFilterCol.setType(DataType.valueOf(imModelFilterCol.getType()));
         modelFilterCol.setNeed(imModelFilterCol.getIsNeed().equals("0"));
         modelFilterCol.setOperator(Operator.getOperatorByValue(imModelFilterCol.getOperator()));
-    }
-
-    public void runModelBuild(ImModel imModel) throws Exception{
-        //组织需要构建或则删除构建的模型
-        Model model = getModelByImModel(imModel);
-        if(model.getType().equals(ModelType.BATCH)){
-           /* imProviderService.buildBatch(model);*/
-        }else if(model.getType().equals(ModelType.REALTIME)){
-            imProviderService.buildRealtime(model);
-        }
     }
 }

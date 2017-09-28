@@ -1,6 +1,10 @@
 package com.hex.bigdata.udsp.im.provider.impl.util;
 
+import com.hex.bigdata.udsp.common.constant.DataType;
+import com.hex.bigdata.udsp.common.constant.Operator;
 import com.hex.bigdata.udsp.im.provider.impl.util.model.TableColumn;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.ValueColumn;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.WhereProperty;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
@@ -71,6 +75,30 @@ public class OracleSqlUtil {
      */
     public static String commentTable(String tableName, String tableComment) {
         return "COMMENT ON TABLE " + tableName + " IS '" + tableComment + "'";
+    }
+
+    /**
+     * 插入
+     *
+     * @param tableName
+     * @param valueColumns
+     * @return
+     */
+    public static String insert(String tableName, List<ValueColumn> valueColumns) {
+        return "INSERT INTO " + tableName + SqlUtil.getIntoNames(valueColumns)
+                + " VALUES " + SqlUtil.getIntoValues(valueColumns);
+    }
+
+    /**
+     * 更新
+     *
+     * @param tableName
+     * @param valueColumns
+     * @param whereProperties
+     * @return
+     */
+    public static String update(String tableName, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) {
+        return "UPDATE " + tableName + SqlUtil.getSetValues(valueColumns) + SqlUtil.getWhere(whereProperties);
     }
 
     private static String getColumns(List<TableColumn> columns) {

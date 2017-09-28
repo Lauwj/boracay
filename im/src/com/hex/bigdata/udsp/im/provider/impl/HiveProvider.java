@@ -6,17 +6,16 @@ import com.hex.bigdata.metadata.db.util.AcquireType;
 import com.hex.bigdata.metadata.db.util.DBType;
 import com.hex.bigdata.udsp.common.constant.DataType;
 import com.hex.bigdata.udsp.common.provider.model.Datasource;
-import com.hex.bigdata.udsp.common.provider.model.Property;
 import com.hex.bigdata.udsp.im.provider.impl.model.datasource.HiveDatasource;
-import com.hex.bigdata.udsp.im.provider.impl.model.modeling.HiveModel;
-import com.hex.bigdata.udsp.im.provider.impl.model.modeling.JdbcModel;
 import com.hex.bigdata.udsp.im.provider.impl.util.HiveSqlUtil;
 import com.hex.bigdata.udsp.im.provider.impl.util.JdbcUtil;
 import com.hex.bigdata.udsp.im.provider.impl.util.model.FileFormat;
 import com.hex.bigdata.udsp.im.provider.impl.util.model.TableColumn;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.ValueColumn;
+import com.hex.bigdata.udsp.im.provider.impl.util.model.WhereProperty;
 import com.hex.bigdata.udsp.im.provider.impl.wrapper.JdbcWrapper;
 import com.hex.bigdata.udsp.im.provider.model.Metadata;
-import com.hex.bigdata.udsp.im.provider.model.Model;
+import com.hex.bigdata.udsp.im.provider.model.ModelMapping;
 import com.hex.bigdata.udsp.im.util.ImUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,7 +23,6 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -53,15 +51,6 @@ public class HiveProvider extends JdbcWrapper {
         String fullTbName = metadata.getTbName();
         String sql = HiveSqlUtil.dropTable(false, fullTbName);
         return JdbcUtil.executeUpdate(hiveDatasource, sql);
-    }
-
-    @Override
-    public JdbcModel getJdbcModel(List<Property> properties, Datasource srcDatasource) {
-        return new HiveModel(properties,srcDatasource);
-    }
-
-    public JdbcModel getJdbcModel(Model model) {
-        return new HiveModel(model);
     }
 
     @Override
@@ -123,5 +112,32 @@ public class HiveProvider extends JdbcWrapper {
 //        // 查询元数据表，可以获取最为详细的字段信息
 //        return ClientFactory.createMetaClient(AcquireType.JDBCSQL, DBType.HIVE, conn)
 //                .getColumns(dbName, tbName);
+    }
+
+    @Override
+    protected void insertInto(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void updateInsert(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    protected void matchingUpdate(Metadata metadata, List<ModelMapping> modelMappings, List<ValueColumn> valueColumns, List<WhereProperty> whereProperties) throws Exception {
+        try {
+            throw new Exception("不支持该方法");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

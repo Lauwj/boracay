@@ -29,8 +29,8 @@ ${extends("/goframe/function_layout.httl")}
                     <td>
 
                         <div id="dsId" class="nui-combobox" style="width:97%;" popupWidth="400" textField="name"
-                             valueField="pkId" onvaluechanged="typeChanged"
-                             url="${basePath}/com/ds/select?model=${model}" dataField="data" name="dsId"
+                             valueField="pkId" onvaluechanged="typeChanged" allowInput="true"
+                             url="${basePath}/com/ds/select?model=IM" dataField="data" name="dsId"
                              multiSelect="false" required="true">
                             <div property="columns">
                                 <div header="名称" field="name"></div>
@@ -702,7 +702,7 @@ ${extends("/goframe/function_layout.httl")}
         // --配置信息变化--
         grid2.clearRows();
         var dsId = nui.get("dsId").getValue();
-        $.post("${basePath}/goframe/dict/getDictData?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type, {}, function (data) {
+        $.post("${basePath}/goframe/dict/getDictData?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type, {}, function (data) {
             var props = [];
             if (data.length > 0) {
                 for (var i = 0, len = data.length; i < len; i++) {
@@ -835,7 +835,7 @@ ${extends("/goframe/function_layout.httl")}
             return;
         }
         nui.open({
-            url: "${basePath}/goframe/p/com.ds.multi?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type,
+            url: "${basePath}/goframe/p/com.ds.multi?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type,
             title: "批量添加",
             width: 650,
             height: 380,
@@ -896,7 +896,7 @@ ${extends("/goframe/function_layout.httl")}
         // --下拉选项变化--
         if (count == 0) {
             var dsId = dsIdObject.value;
-            e.source.load("${basePath}/goframe/dict/getDictData?dictTypeId=${model}_MD_PROPS_" + getDsByPkId(dsId).type);
+            e.source.load("${basePath}/goframe/dict/getDictData?dictTypeId=IM_MD_PROPS_" + getDsByPkId(dsId).type);
             count++;
         }
     }
